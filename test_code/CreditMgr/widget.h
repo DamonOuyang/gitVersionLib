@@ -38,7 +38,6 @@ private slots:
 
     void on_Data_Btn_clicked();
 
-//public slots:
     void slot_check_Card();
 
 private:
