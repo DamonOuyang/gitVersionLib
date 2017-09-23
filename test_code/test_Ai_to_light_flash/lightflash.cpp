@@ -25,9 +25,9 @@ void LightFlash::initFlashState(Light_Flash_State flshSate)
     if(!flshSate)
     {
         int Arr[ITEM_COUNT_TO_LIGHT] = {0,1,2,3,4,5,6,7,8,9};
-        m_flshSate->_runType = 1;             // 1
+        m_flshSate->_runType = 1;                // 1
         m_flshSate->_loop    = 10000;            // 2
-        m_flshSate->_time_offset = 500;       // 300
+        m_flshSate->_time_offset = 500;          // 300
         for(int i=0; i < sizeof(Arr)/sizeof(*Arr);++i)
         {
             m_flshSate->_itemArr[i] = Arr[i];
@@ -451,7 +451,8 @@ void LightFlash::resetProductItemState_10()
 
 void LightFlash::resetStateAll()
 {
-    switch (m_flshSate->_runType) {
+    switch (m_flshSate->_runType)
+    {
     case ONE:
         resetProductItemState_1();
 
@@ -532,4 +533,5 @@ void LightFlash::releaseInstance()
 //    initFlashState(flshSate);
 //    m_OffsetTimer = new QTimer(this);
 //    connect(m_OffsetTimer,SIGNAL(timeout()),this,SLOT(slot_reflesh()));
+
 //}

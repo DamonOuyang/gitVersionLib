@@ -1,0 +1,713 @@
+	
+HISTORY:
+
+Date Notes Version
+----- ------ -----------
+
+28-04-92 1.00 Draft
+17-11-92 1.01 Extra Start Charging Escapes
+13-04-93 1.02 Adjustments for struct XxConnect Project
+                        Adjustments struct XxXCount
+14-04-93 1.03 Master / Slave example
+11-11-93 1.04 Adjustment struct XxConnect
+                        Access, Species and Subproject
+
+
+
+0 Size
+
+       1 Communication Line
+
+       2 Message Format
+       2.1 Checksums
+       2.2 Start-Stop Characters
+       2.3 Escapes
+       2.4 Header
+       2.4.1 Destination Address
+       2.4.2 Source Address
+       2.4.3 Task Number
+       2.4.4 Packet Type
+       2.4.5 Sequence Number
+       2.4.6 Packet Length
+       2.4.7 HeaderChecksum
+       2.5 Data Packet
+
+       Level 3 Link Control Session
+       3.1 Command-Response Packets
+       3.2 Error Packets
+       3.3 Retries and Time Outs
+       3.4 Master / Slave example
+
+       4 Network Topology
+       4.1 Loop
+       4.2 Point-to-point
+
+       5 Dos File System Commands
+       5.1 Data Packets
+      
+       6 Session Control Commands
+       6.1 Connect Procedure
+       6.2 Disconnectprocedure
+       6.3 Abortprocedure
+       6.4 Transfer Count Procedure
+
+       7 Packet structure definitions
+
+       8 Literal Used
+
+
+1 Communication Line
+
+       - Asynchronous
+       - 1 start
+       - 8 Data Bits
+       - Stop at least 1
+
+       Baud rate and Parity are NOT part of the specification.
+    
+
+2 Message Format
+
+       A message consists of the following components:
+
+       - Start Character
+       - Plus Header Checksum
+       - Optional Data Packet Checksum plus
+       - Stop Character
+
+
+2.1 Checksums
+
+       The checksum on a byte array with ARRY length LEN is as follows
+       calculated:
+
+       CHECKSUM: = 0;
+       I: = 0;
+       WHILE I <LEN DO;
+         CHECKSUM: = CHECKSUM XOR ARRY [I];
+         CHECKSUM: = ROTATERIGHT (CHECKSUM);
+         I: I = 1;
+       END;
+    
+
+2.2 Start-Stop Characters
+
+       The start of a new message is uniquely characterized by the
+       START_CHAR action. By the end STOP_CHAR.
+       (see paragraph 2.3 Escapes).
+
+
+2.3 Escapes
+
+       On a number of characters is drawn from a special significance. These
+       charcters may therefore not included in the Header or Packet Data Volume avoided.
+       For this reason, such as 2-byte characters charactersequences
+       sent.
+
+       After original transformation
+       --------- ----------------
+       ESC_CHAR ESC_CHAR, 0x30
+       START_CHAR ESC_CHAR, 0x31
+       STOP_CHAR ESC_CHAR, 0x32
+       START_CHAR2 ESC_CHAR, 0x33
+       START_CHAR3 ESC_CHAR, 0x34
+      
+
+2.4 Header
+
+       The message header consists of the following components:
+  
+       Literal Field Bytes Note
+       ---- ------- ----- ---------
+       - Destination Address DST_ADR 4 LSB first
+       - Source Address SRC_ADR 4 LSB first
+       - Task TSK_NO Number 1
+       - Packet PACK_TYPE Type 1
+       - Sequence Number SEQ_NO 1
+       - Packet Length PACK_LEN 2 LSB first
+       - HeaderChecksum HDR_CHECK 1
+
+
+2.4.1 Destination Address
+
+       DST_ADR is the address of the station where the message is intended.
+       DST_ADR 0 is a broadcast address: A message for a station is 0
+       message to all.
+
+
+2.4.2 Source Address
+
+       SRC_ADR is the address of the station from which the message originated.
+
+
+2.4.3 Task Number
+
+       TSK_NO is the DST_ADR and SRC_ADR agreed number of
+       a peer-to-peer communication session d.m.v. Data Packets will be conducted.
+
+
+2.4.4 Packet Type
+
+       The protocol distinguishes PACK_TYPEs the following:
+
+       Packet Type Literal
+       ---------- -------
+       Command Packet PT_CMD
+       Response Packet PT_RSP
+       Packet Error PT_ERR
+
+       PT_ERR a packet is particularly in the sense that the missing data packet
+       and the field as PACK_LEN error code should be interpreted.
+
+
+2.4.5 Sequence Number
+
+       All messages are equipped with January 1-byte sequence. This sequence
+       is for every new PT_CMD packet to be incremented by 1. After
+       Achieving the value 0xFF follows a wrap-around to 0x00.
+
+       The Sequence Number in PT_RSP packets are always accepted
+       PT_CMD from the packet on which the answer.
+
+       The Sequence Number in PT_ERR packets are always accepted
+       from the PT_CMD / PT_RSP packet where the error relates.
+
+       NB The Sequence Number in PT_CMD packets caused by retries,
+            is not incremented. Only by applikatie initiated PT_CMD
+            packets are sequentially numbered!
+
+
+2.4.6 Packet Length
+
+       PACK_LEN gives PT_CMD and PT_RSP packets for the length of the
+       Data Packet, For PT_ERR packets is a 2-byte error code.
+
+
+2.4.7 HeaderChecksum
+
+       HDR_CHECK is calculated on the byte array DST_ADR, SRC_ADR, TSK_NO,
+       PACK_TYPE, SEQ_NO and PACK_LEN. The fields DST_ADR, SRC_ADR and PACK_LEN
+       are hereby ordered following the INTEL LSB first principle.
+
+
+2.5 Data Packet
+
+       The optional data packet consists of the following components:
+
+       Literal Field Bytes Note
+       ---- ------- ----- ---------
+       - Packet Data PACK_DATA n
+       - PacketChecksum PACK_CHECK 1
+
+       Whether or absence of a data packet is indicated by
+       The combination PACK_TYPE - PACK_LEN. PACK_TYPE also provides the
+       significance of PACK_LEN. The actual content is PACK_DATA
+       specified by higher order protocol definitions.
+
+
+Level 3 Link Control Session
+
+3.1 Command-Response Packets
+
+       SRC_ADR sends DST_ADR a PT_CMD packet and wait for a response from
+       DST_ADR. If DST_ADR responding, there are two types of reactions:
+
+       1. DST_ADR sends SRC_ADR a PT_RSP packet.
+       2. DST_ADR responds with a packet PT_ERR.
+
+       If justified, it can SRC_ADR the PT_RSP packet again
+       PT_ERR a packet answer.
+
+
+3.2 Error Packets
+
+       The Link Level Session Control provides for the following Error Packets:
+
+       Literal Weight Description
+       ------- ------- ------------
+
+       ERR_CHK2 1 The checksum on the data packet was not correct.
+
+       ERR_SIZE 2 SRC_ADR was not in a position of the message
+                          given length buffer.
+
+       ERR_REPLY 3 SRC_ADR was unable PT_RSP a packet without
+                          errors in DST_ADR to deliver.
+
+       ERR_SEQ 4 SEQ_NO in PT_CMD packet was not 1 higher as the
+                          SRC_ADR last known sequence of PT_CMD
+                          DST_ADR. Now sync SRC_ADR is!
+
+       ERR_SYNC 6 General CMD - RSP synchronization error in SRC_ADR.
+
+       ERR_DST 7 Station SRC_ADR is active, but is not TSK_NO
+                          receptive to PT_CMD packets of DST_ADR.
+
+       If more than one error liabilities situ simultaneous action, provides the weight
+       of the various errors the final result.
+
+
+3.3 Retries and Time Outs
+
+       Retrycounts and Response timeoutwaarden are NOT specified and
+       be left to higher-level protocol specifications.
+
+
+3.4 Master / Slave example
+
+       The master and slave drive through the state following diagrams:
+
+           Master Slave
+           ------ -----
+
+           IDLE IDLE
+
+           CMD_PENDING
+                                                CMD_RECEIVED
+                                                RSP_PENDING
+           RSP_RECEIVED
+
+           CMD_ERROR RSP_ERROR
+                 
+
+        1. SLAVE MASTER sends a packet Command.
+
+            MASTER it is in the state CMD_PENDING. This state-transition
+            is allowed only from the states IDLE, or RSP_RECEIVED
+            CMD_ERROR.
+
+            MASTER is responsible for the sequential numbering of the
+            by SLAVE to run Command Packets.
+
+        2. SLAVE Command receives the packet.
+
+            If SLAVE is inadmissible for Packets with Task number TSK_NO,
+            SLAVE sends a Packet Error ERR_DST.
+                
+            Definitions:
+              SlaveSeq == Sequence Number of last SLAVE
+                            carried Command Packet
+              MasterSeq == Sequence number of current Command Packet
+              DeltaSeq == MasterSeq - SlaveSeq
+              Slave State == Current state of SLAVE
+
+            Depending on Slave State and DeltaSeq act according SLAVE
+            matrix below:
+
+              Slave State DeltaSeq = 0 DeltaSeq = 1 DeltaSeq> = 1
+
+              IDLE ERR_SEQ ok ERR_SEQ
+              CMD_RECEIVED nap ERR_SYNC ERR_SYNC
+              RSP_PENDING repeat RSP ok ERR_SEQ
+              RSP_ERROR ERR_REPLY ok ERR_SEQ
+
+
+            If at this point OK, then can the next
+            error situations:
+            - SLAVE has no buffer of sufficient length for the
+              Command Packet. In this situation reacts with SLAVE ERR_SIZE.
+            - The checksum data on the part of the Command Packet is not
+              correct. In this situtie response ERR_CHK2 with SLAVE.
+               
+            SlaveSeq is equal to MasterSeq if:
+            - There is no foutsitutatie
+                OR
+            - There is a ERR_SEQ or ERR_SIZE gedetekteerd
+
+            Is there no error situation, then SLAVE in the state CMD_RECEIVED
+            and the communication session will continue under section 3.
+
+            There is an error, then it sends SLAVE
+            Packet Error belonging and the communication session continues
+            under section 6.
+                  
+        3. SLAVE, the command in the Command Packet off. The result
+            Response packet is sent as SLAVE and goes to state
+            RSP_PENDING.
+
+        4. MASTER receives the Response Packet
+
+            Definitions:
+              MasterSeq == Sequence Number of last MASTER
+                             Command sent Packet
+              SlaveSeq == Sequence number of current Response Packet
+              Master State == Current state of MASTER
+
+            MASTER respond only if the following:
+            - MasterSeq is equal to SlaveSeq
+                AND
+            - Master State is CMD_PENDING
+
+            There may be then the following error situations:
+            - MASTER has no buffer of sufficient length for the
+              Response Packet. In this situation reacts with MASTER ERR_SIZE.
+            - The checksum data on the part of the response packet is not
+              correct. In this situtie response ERR_CHK2 with MASTER.
+                
+            Is there no error situation, then MASTER in the state RSP_RECEIVED
+            and the communication session will continue under section 5.
+
+            There is an error, then it sends MASTER
+            Packet Error belonging and the communication session continues
+            under section 7.
+
+        5. MASTER processed the response packet and the communication session is
+            any further under Section 1.
+
+        6. MASTER receives a packet of Error SLAVE
+
+            Definitions:
+              MasterSeq == Sequence Number of last MASTER
+                             Command sent Packet
+              SlaveSeq == Sequence number of current Packet Error
+              Master State == Current state of MASTER
+
+            MASTER respond only if the following:
+            - MasterSeq is equal to SlaveSeq
+            - Master State is CMD_PENDING
+
+            Packet Error Indicates a ERR_CHK2, then sends it again MASTER
+            recent Packet Command. For all other errors is to MASTER
+            CMD_ERROR state.
+
+        7. SLAVE receives a packet of Error MASTER
+
+            Definitions:
+              SlaveSeq == Sequence Number of last SLAVE
+                            Response sent Packet
+              MasterSeq == Sequence number of current Packet Error
+              Slave State == Current state of SLAVE
+
+            SLAVE respond only if the following:
+            - SlaveSeq is equal to MasterSeq
+            - Slave State is RSP_PENDING
+
+            Packet Error Indicates a ERR_CHK2, then sends it again SLAVE
+            recent Packet Response. For all other errors is to SLAVE
+            RSP_ERROR state.
+
+                
+4 Network Topology
+
+4.1 Loop
+
+       In a loop configuration, there is a station, the station master, that is not
+       echoed. For all other stations is that only the information
+       ge is echoed, that is relevant for further stations in the loop. At
+       when it is clear that the incoming data stream only for this
+       specific station is appropriate and sent a STOP_CHAR
+       echo mode to be lifted.
+
+       Furthermore, in a loop configuration a receiver dead time in eight
+       to be taken. If a station during the time RCVR_DEADTIME
+       No information may be reacted as if a STOP_CHAR
+       received.
+
+
+4.2 Point-to-point
+
+       In a point-to-point situation does not ge to be echoed.
+
+
+5 Dos File System Commands
+
+       Func Sub Heading CmdPacket RspPacket
+       --- ---- ------------ ------------ ---------
+
+       0x3d 0x ** ComOpenFile TX_FOPEN RX_FOPEN
+       0x3e ComCloseFile TX_FCLOSE RX_FCLOSE
+       0x3f ComReadFile TX_FREAD RX_FREAD
+       0x40 ComWriteFile TX_FWRITE RX_FWRITE
+       0x41 ComDelFile TX_FDELETE RX_FDELETE
+       0x42 0x ** ComSeekFile TX_FSEEK RX_FSEEK
+       0x4e ComFindFirst TX_FIRST RX_FIRST
+       0x4F ComFindNext TX_NEXT RX_NEXT
+       0x56 ComRenameFile TX_FRENAME RX_FRENAME
+       0x5b ComCreateFile TX_FCREATE RX_FCREATE
+       0x68 ComCommitFile TX_FCOMMIT RX_FCOMMIT
+
+
+5.1 Data Packets
+
+       To provide guidance on the content of the data packets for file-system commands
+       DOS 4.0, the technical reference manual.
+
+      
+6 Session Control Commands
+
+       Func Sub Heading CmdPacket RspPacket
+       --- ---- ------------ ------------ ---------
+
+       0xFF 0x00 Connect TX_CONNECT RX_CONNECT
+       0xFF 0x01 Disconnect TX_DISCONNECT RX_DISCONNECT
+       0xFF 0x02 Abort TX_ABORT RX_ABORT
+       0xFF 0x03 Transfer Count TX_XCOUNT RX_XCOUNT
+
+
+6.1 Connect Procedure
+
+       A communication session begins connect with the procedure. The master of
+       so the session sends a Connect-data packet.
+
+       For the tasks BOS record "and" BOS mutations "that consists of:
+
+         - Project
+         - Subproject
+         - Access
+         - SrcDst
+
+       On the basis of the number task, project number, and access srcdst
+       decide the slave to success or failure.
+
+       The field subproject will be used during DIAL-IN for business
+       can route data dynamically.
+
+
+6.2 Disconnectprocedure
+
+       A normal communication session is expiring by the master with
+       Disconnect a data packet ended. On the basis of the number task should
+       the slave cleanupwerzaamheden necessary to carry out.
+
+
+6.3 Abortprocedure
+
+       An ongoing communication can session by the master with an Abort-data packet
+       be ended. On the basis of the number task, the slave-emergency
+       cleanupwerzaamheden business to run. In general, these
+       unlike a normal termination of the session by a
+       disconnectprocedure.
+
+
+6.4 Transfer Count Command
+
+       The transfer-count command is used to exchange information
+       between master and slave, allowing for both a visual way
+       indication can maintain.
+
+
+7 Packet structure definitions
+      
+       typedef struct (TxFOpen
+         byte mode, / / Access, Share
+         byte Func / / 0x3d
+         char name [1]; / / string Asciiz
+       TX_FOPEN);
+
+       typedef struct (RxFOpen
+         Func word / / 0x3Dxx
+         Error word / / error
+         hFile word, / / file handle
+       RX_FOPEN);
+
+      
+       typedef struct (TxFClose
+         Func word / / 0x3E00
+         hFile word, / / file handle
+       TX_FCLOSE);
+       typedef TX_FCLOSE * pTX_FCLOSE;
+
+       typedef struct (RxFClose
+         Func word / / 0x3E00
+         Error word / / error
+       RX_FCLOSE);
+
+      
+       typedef struct (TxFRead
+         Func word / / 0x3F00
+         hFile word, / / file handle
+         Bufsize word, / / buffer size
+       TX_FREAD);
+
+       typedef struct (RxFRead
+         Func word / / 0x3F00
+         Error word / / error
+         Count word / / nRead
+         DtA byte [1];
+       RX_FREAD);
+
+      
+       typedef struct (TxFWrite
+         Func word / / 0x4000
+         hFile word, / / file handle
+         Bufsize word, / / buffer size
+         DtA byte [1];
+       TX_FWRITE);
+
+       typedef struct (RxFWrite
+         Func word / / 0x4000
+         Error word / / error
+         Count word / / nWritten
+       RX_FWRITE);
+
+      
+       typedef struct (TxFDelete
+         Func word / / 0x4100
+         char name [1]; / / string Asciiz
+       TX_FDELETE);
+
+       typedef struct (RxFDelete
+         Func word / / 0x4100
+         Error word / / error
+       RX_FDELETE);
+
+
+       typedef struct (TxFSeek
+         Method byte / / relative to (0 = BOF, 1 = CurPos, 2 = EDF)
+         byte Func / / 0x42
+         hFile word, / / file handle
+         Offset lung, / / offset;
+       TX_FSEEK);
+
+       typedef struct (RxFSeek
+         Func word / / 0x42xx
+         Error word / / error
+         dword Pos / / current position
+       RX_FSEEK);
+
+      
+       typedef struct (TxFirst
+         Func word / / 0x4E00
+         Attrib word;
+         char fname [1]; / / string Asciiz
+       TX_FIRST);
+
+       typedef struct (RxFirst
+         Func word / / 0x4E00
+         Error word / / error
+         Reserved byte [21];
+         Attrib byte;
+         Time is;
+         word Date;
+         Size dword;
+         NameExt char [13]; / / string Asciiz
+       RX_FIRST);
+
+      
+       typedef struct (TxNext
+         Func word / / 0x4F00
+         Filler word;
+         Reserved byte [21];
+       TX_NEXT);
+
+       typedef struct (RxNext
+         Func word / / 0x4F00
+         Error word / / error
+         Reserved byte [21];
+         Attrib byte;
+         Time is;
+         word Date;
+         Size dword;
+         NameExt char [13]; / / string Asciiz
+       RX_NEXT);
+
+      
+       typedef struct (TxFRename
+         Func word / / 0x5600
+         oldname char [13];
+         newname char [13];
+       TX_FRENAME);
+
+       typedef struct (RxFRename
+         Func word / / 0x5600
+         Error word / / error
+       RX_FRENAME);
+
+
+       typedef struct (TxFCreate
+         Func word / / 0x5B00
+         Attrib word / / Attributes
+         char name [1]; / / string Asciiz
+       TX_FCREATE);
+
+       typedef struct (RxFCreate
+         Func word / / 0x5B00
+         Error word / / error
+         hFile word, / / file handle
+       RX_FCREATE);
+
+
+       typedef struct (TxFCommit
+         Func word / / 0x6800
+         hFile word, / / file handle
+       TX_FCOMMIT);
+
+       typedef struct (RxFCommit
+         Func word / / 0x6800
+         Error word / / error
+       RX_FCOMMIT);
+
+      
+       typedef struct (TxConnect
+         Func word / / 0xFF00
+         dword Project / / Project Number
+         dword SubPrjct / / SubProjectID (several DCT per project)
+         Access word, / / Additional Access Control
+         SrcDst word, / / Source Destination identification
+       TX_CONNECT);
+
+       typedef struct (RxConnect
+         Func word / / 0xFF00
+         Error word;
+         dword Project / / Project Number
+         dword SubPrjct / / SubProjectID (several DCT per project)
+         Access word, / / Additional Access Control
+         SrcDst word, / / Source Destination identification
+       RX_CONNECT);
+
+      
+       typedef struct (TxDisconnect
+         Func word / / 0xFF01
+       TX_DISCONNECT);
+
+       typedef struct (RxDisconnect
+         Func word / / 0xFF01
+         Error word;
+       RX_DISCONNECT);
+
+      
+       typedef struct (TxAbort
+         Func word / / 0xFF02
+       TX_ABORT);
+
+       typedef struct (RxAbort
+         Func word / / 0xFF02
+         Error word;
+       RX_ABORT);
+
+      
+       typedef struct (TxXCount
+         Func word / / 0xFF03
+         dword Count;
+       TX_XCOUNT);
+
+       typedef struct (RxXCount
+         Func word / / 0xFF03
+         Error word;
+         dword Count;
+       RX_XCOUNT);
+
+
+8 Literal Used
+
+       Literal ASCII Hex Description
+       ------- --- ----- ------------
+      
+       ESC_CHAR 0x2f /
+       START_CHAR 0x3a:
+       STOP_CHAR 0x0D ^ M
+       START_CHAR2 0xxx;
+       START_CHAR3 0xxx #
+
+       PT_CMD 0x01 Command Packet
+       PT_RSP 0x02 Response Packet
+       PT_ERR 0x03 Packet Error
+
+       ERR_DST 0x10
+       ERR_SYNC 0x11
+       ERR_SEQ 0x13
+       ERR_REPLY 0x14
+       ERR_SIZE 0x15
+       ERR_CHK2 0x16
+
+       RCVR_DEADTIME 0x05 Units of 0.1 sec.
