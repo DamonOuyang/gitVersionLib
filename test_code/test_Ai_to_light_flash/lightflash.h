@@ -82,9 +82,9 @@ protected:
     void ctrlLoopCount();
 
 private:
-    QTimer*             m_OffsetTimer;
+    QTimer*                   m_OffsetTimer;
     QList<CoffeeProductItem*> m_productItemList;
-    Light_Flash_State*  m_flshSate;
+    Light_Flash_State*        m_flshSate;
 
     static int m_stateCount;
     static int m_ctrlLoop;
